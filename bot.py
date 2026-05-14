@@ -135,8 +135,10 @@ async def on_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             ctx.user_data["comment"] = msg.text
             set_state(ctx, S_WAIT_IMAGE)
             await msg.reply_text(
-                "📎 Отлично! Теперь загрузи *фото или скан* схемы\n"
-                "_(JPG, PNG или документ)_",
+                "📎 Отлично! Теперь загрузи схему как *файл* (не как фото!)\n\n"
+                "⚠️ *Telegram сжимает обычные фото — качество падает!*\n"
+                "Отправь через: Скрепка 📎 → *Файл* → выбери изображение\n"
+                "_(JPG, PNG, PDF — любое разрешение)_",
                 parse_mode="Markdown",
             )
         else:
