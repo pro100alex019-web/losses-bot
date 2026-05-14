@@ -236,6 +236,26 @@ async def scheme_retry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return WAITING_SCHEME_IMAGE
 
 
+
+
+async def _remind_upload_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "📎 Жду фото или скан схемы (не текст). "
+        "Загрузи изображение с обведёнными красным нужными элементами.",
+        parse_mode="Markdown",
+    )
+    return WAITING_SCHEME_IMAGE
+
+
+async def prompt_upload_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query; await q.answer()
+    await q.message.reply_text(
+        "📎 Загрузи проверенный *Excel (.xlsx)* файл:",
+        parse_mode="Markdown",
+    )
+    return WAITING_EXCEL_BACK
+
+
 async def receive_excel_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
     doc = update.message.document
     if not doc or not doc.file_name.endswith(".xlsx"):
@@ -373,7 +393,6 @@ def main():
 
     conv = ConversationHandler(
         entry_points=[
-            CommandHandler("start", cmd_start),
             CallbackQueryHandler(start_calc, pattern="^start_calc$"),
         ],
         states={
@@ -383,6 +402,7 @@ def main():
             WAITING_SCHEME_IMAGE: [
                 MessageHandler(filters.PHOTO | filters.Document.ALL, receive_scheme_image),
                 CallbackQueryHandler(scheme_retry, pattern="^scheme_retry$"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, _remind_upload_image),
             ],
             WAITING_EXCEL_BACK: [
                 MessageHandler(
@@ -393,8 +413,7 @@ def main():
                 ),
                 CallbackQueryHandler(scheme_ok,    pattern="^scheme_ok$"),
                 CallbackQueryHandler(scheme_retry, pattern="^scheme_retry$"),
-                CallbackQueryHandler(lambda u, c: WAITING_EXCEL_BACK,
-                                     pattern="^upload_excel$"),
+                CallbackQueryHandler(prompt_upload_excel, pattern="^upload_excel$"),
             ],
             ASKING_MONTHLY: [
                 CallbackQueryHandler(month_yes, pattern="^month_yes$"),
@@ -412,9 +431,9 @@ def main():
         per_message=False,
     )
 
-    app.add_handler(conv)
     app.add_handler(CommandHandler("start",  cmd_start))
     app.add_handler(CommandHandler("cancel", cmd_cancel))
+    app.add_handler(conv)
 
     logger.info("Бот потерь запущен...")
     app.run_polling()
