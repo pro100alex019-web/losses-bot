@@ -52,6 +52,55 @@ def _safe_float(val) -> float | None:
         return None
 
 
+
+def _calc_topology(raw_lines: list, k2f: float, kk: float, cos2: float):
+    """
+    Рассчитывает суммарную константу C с учётом топологии:
+    - Одинаковый color_group → параллельные → R_eq = 1 / Σ(1/Rᵢ)
+    - color_group=None или уникальный → последовательный элемент
+    - Результирующий C = Σ по всем группам и отдельным элементам
+    """
+    from collections import defaultdict
+    groups = defaultdict(list)
+    no_group = []
+
+    for line in raw_lines:
+        cg = line.get("color_group")
+        if cg:
+            groups[cg].append(line)
+        else:
+            no_group.append(line)
+
+    C_total = 0.0
+    lines_out = []
+
+    # Параллельные группы
+    for cg, grp in groups.items():
+        conductances = [1/l["R"] for l in grp if l["R"] > 0]
+        if not conductances:
+            continue
+        R_eq = 1 / sum(conductances)
+        U    = grp[0]["U"]          # напряжение группы
+        C    = k2f * kk * R_eq / (U ** 2 * cos2 * 1000)
+        C_total += C
+        names = " ∥ ".join(l["name"] for l in grp)
+        logger.info(
+            f"Параллельная группа [{cg}]: {len(grp)} линий, R_eq={R_eq:.4f} Ом, C={C:.6E}"
+        )
+        lines_out.append({"name": f"[{cg}] {names}", "C": C})
+
+    # Последовательные (без группы)
+    for line in no_group:
+        R = line["R"]
+        U = line["U"]
+        C = k2f * kk * R / (U ** 2 * cos2 * 1000)
+        C_total += C
+        logger.info(f"Последоват. '{line['name']}': R={R:.4f}, C={C:.6E}")
+        lines_out.append({"name": line["name"], "C": C})
+
+    return C_total, lines_out
+
+
 def read_constants_from_excel(file_bytes: bytes) -> NetworkConstants | None:
     """
     Читает Excel (лист 1 — Параметры сети), пересчитывает константы C, A, B.
@@ -82,13 +131,16 @@ def read_constants_from_excel(file_bytes: bytes) -> NetworkConstants | None:
     lines_list = []
     C_total = 0.0
 
+    raw_lines = []
+
     for i in range(10):
         row_idx = 11 + i
         try:
-            name = str(df.iloc[row_idx, 1]).strip()
-            r0   = _safe_float(df.iloc[row_idx, 4])
-            L    = _safe_float(df.iloc[row_idx, 5])
-            U    = _safe_float(df.iloc[row_idx, 6])
+            name        = str(df.iloc[row_idx, 1]).strip()
+            r0          = _safe_float(df.iloc[row_idx, 4])
+            L           = _safe_float(df.iloc[row_idx, 5])
+            U           = _safe_float(df.iloc[row_idx, 6])
+            color_raw   = str(df.iloc[row_idx, 7]).strip().lower()
         except Exception as e:
             logger.debug(f"Линия row{row_idx}: исключение {e}")
             continue
@@ -99,10 +151,13 @@ def read_constants_from_excel(file_bytes: bytes) -> NetworkConstants | None:
             logger.debug(f"Линия '{name}': пропуск (r0={r0}, L={L}, U={U})")
             continue
 
-        C = k2f * kk * r0 * L / (U ** 2 * cos2 * 1000)
-        lines_list.append({"name": name, "C": C})
-        C_total += C
-        logger.info(f"Линия '{name}': r0={r0}, L={L}, U={U} → C={C:.6E}")
+        R  = r0 * L
+        cg = color_raw if color_raw not in ("", "nan", "none", "null", "нет") else None
+        raw_lines.append({"name": name, "R": R, "U": U, "color_group": cg})
+        logger.info(f"Линия '{name}': R={R:.4f}, U={U}, группа={cg!r}")
+
+    C_total, lines_list = _calc_topology(raw_lines, k2f, kk, cos2)
+    logger.info(f"Топология: C_total={C_total:.6E}, элементов={len(lines_list)}")
 
     # ── Трансформаторы (Excel строки 25-32 = pandas 24-31)
     # Структура: col B(1)=name, C(2)=mark, D(3)=P0, E(4)=Pk, F(5)=Sn, G(6)=n

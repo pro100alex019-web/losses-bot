@@ -53,7 +53,7 @@ def generate_excel(scheme_data: dict, cos_phi: float = 0.90,
     # ── Лист 1: Параметры (ввод / проверка) ──
     ws1 = wb.active; ws1.title = "1. Параметры сети"
     ws1.sheet_view.showGridLines = False
-    for col, w in zip("ABCDEFGHI", [4, 30, 12, 14, 14, 14, 14, 14, 20]):
+    for col, w in zip("ABCDEFGHIJ", [4, 30, 12, 14, 14, 14, 14, 16, 14, 20]):
         ws1.column_dimensions[col].width = w
 
     _hdr(ws1, 1, 1, "РАСЧЁТ ПОТЕРЬ ЭЛЕКТРОЭНЕРГИИ — ПАРАМЕТРЫ СЕТИ", r2=1, c2=9, sz=13)
@@ -82,12 +82,12 @@ def generate_excel(scheme_data: dict, cos_phi: float = 0.90,
 
     # Линии
     _hdr(ws1, 10, 1, "Б.  ЛИНИИ — ΔW = C × W²а / T", r2=10, c2=9)
-    for ci, h in enumerate(["Наименование","Тип","Марка","r₀, Ом/км","L, км","U, кВ","Счётчик","Примечание"], 2):
+    for ci, h in enumerate(["Наименование","Тип","Марка","r₀, Ом/км","L, км","U, кВ","Группа (цвет/парал.)","Счётчик","Примечание"], 2):
         c = ws1.cell(row=11, column=ci, value=h)
         c.font = Font(bold=True, color=BH, size=9)
         c.fill = PatternFill("solid", fgColor=BL)
         c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    ws1.row_dimensions[11].height = 20
+    ws1.row_dimensions[11].height = 28
 
     for ri, line in enumerate(lines[:15], 12):
         ws1.cell(row=ri, column=2, value=line.get("name", "")).alignment = Alignment(indent=1)
@@ -96,8 +96,9 @@ def generate_excel(scheme_data: dict, cos_phi: float = 0.90,
         _inp(ws1, ri, 5, line.get("r0"))
         _inp(ws1, ri, 6, line.get("length"))
         _inp(ws1, ri, 7, line.get("voltage", 10))
-        _inp(ws1, ri, 8, "")
-        _inp(ws1, ri, 9, line.get("note", ""))
+        _inp(ws1, ri, 8, line.get("color_group") or "")   # группа параллельных
+        _inp(ws1, ri, 9, "")
+        _inp(ws1, ri, 10, line.get("note", ""))
     # Пустые строки
     for ri in range(12 + len(lines), 22):
         for ci in range(2, 10): _inp(ws1, ri, ci)
