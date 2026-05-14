@@ -198,23 +198,36 @@ async def _process_image(msg, ctx):
         return
 
     comment = ctx.user_data.get("comment", "все элементы")
-    scheme_data = parse_scheme(image_bytes, comment, OPENAI_API_KEY)
+    try:
+        scheme_data = parse_scheme(image_bytes, comment, OPENAI_API_KEY)
+    except Exception as e:
+        logger.error(f"parse_scheme: {e}")
+        set_state(ctx, S_WAIT_IMAGE)
+        await msg.reply_text(
+            "❌ Ошибка при анализе схемы. Попробуй загрузить снова."
+        )
+        return
 
     if not scheme_data.get("lines") and not scheme_data.get("transformers"):
+        set_state(ctx, S_WAIT_IMAGE)
         await msg.reply_text(
             "⚠️ Не удалось распознать элементы схемы.\n\n"
             "Проверь:\n"
             "• Изображение чёткое и не смазанное?\n"
             "• Красная обводка хорошо видна?\n"
             "• Подписи к элементам читаемы?\n\n"
-            "Нажми /start и попробуй ещё раз.",
+            "Загрузи другое изображение или нажми /start",
         )
         return
 
     ctx.user_data["scheme_data"] = scheme_data
-    summary = format_parse_summary(scheme_data)
-    set_state(ctx, S_WAIT_EXCEL)
+    try:
+        summary = format_parse_summary(scheme_data)
+    except Exception as e:
+        logger.error(f"format_parse_summary: {e}")
+        summary = f"✅ Распознано: {len(scheme_data.get('lines',[]))} линий, {len(scheme_data.get('transformers',[]))} трансформаторов"
 
+    set_state(ctx, S_WAIT_EXCEL)
     await msg.reply_text(
         summary + "\n\n_Всё верно? Сгенерировать Excel?_",
         parse_mode="Markdown",

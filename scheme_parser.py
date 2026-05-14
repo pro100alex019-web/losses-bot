@@ -140,8 +140,15 @@ def parse_scheme(
             max_tokens=2000,
         )
         raw = resp.choices[0].message.content.strip()
-        raw = re.sub(r"^```(?:json)?\s*", "", raw)
-        raw = re.sub(r"\s*```$", "", raw)
+        # Убираем markdown-обёртку если GPT завернул в ```json ... ```
+        raw = re.sub(r"^```[a-z]*\s*", "", raw, flags=re.MULTILINE)
+        raw = re.sub(r"```\s*$", "", raw, flags=re.MULTILINE)
+        # Находим первый { и последний } — берём только JSON-объект
+        start = raw.find("{")
+        end   = raw.rfind("}") + 1
+        if start == -1 or end == 0:
+            raise ValueError("JSON-объект не найден в ответе GPT")
+        raw = raw[start:end]
         data = json.loads(raw)
     except Exception as e:
         logger.error(f"GPT Vision ошибка: {e}")
