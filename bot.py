@@ -259,11 +259,12 @@ async def _process_excel(msg, ctx):
     ctx.user_data["constants"] = constants
     set_state(ctx, S_WAIT_MORE)
 
-    await msg.reply_text(format_constants(constants), parse_mode="Markdown")
+    # Отправляем константы без Markdown — имена элементов могут содержать спецсимволы
+    await msg.reply_text(format_constants(constants))
     await msg.reply_text(
-        "💬 *Рассчитать потери за конкретный месяц?*\n\n"
-        "Нужно: месяц + W_а (кВт·ч) по входному счётчику на вводе 10 кВ.",
-        parse_mode="Markdown",
+        "💬 Рассчитать потери за конкретный месяц?\n\n"
+        "Нужно: месяц + W_а (кВт·ч) по входному счётчику на вводе 10 кВ.\n"
+        "⚠️ W_а — показания входного счётчика 10 кВ, не сумма счётчиков 0.4 кВ.",
         reply_markup=kb_monthly(),
     )
 

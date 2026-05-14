@@ -37,6 +37,13 @@ def kb_next_month():
 
 # ─── Вспомогательная: форматировать константы ──────────────────
 
+def _esc(text: str) -> str:
+    """Экранирует спецсимволы Telegram Markdown v1 в динамических данных."""
+    for ch in ["*", "_", "`", "["]:
+        text = text.replace(ch, "\\" + ch)
+    return text
+
+
 def format_constants(c: NetworkConstants) -> str:
     sep = "─" * 28
     lines = [
@@ -47,7 +54,7 @@ def format_constants(c: NetworkConstants) -> str:
     ]
     if c.lines:
         for el in c.lines:
-            lines.append(f"   • {el['name']}: C = `{el['C']:.4E}`")
+            lines.append(f"   • {_esc(str(el['name']))}: C = `{el['C']:.4E}`")
     lines += [
         "",
         "🔌 *Трансформаторы:*",
@@ -57,7 +64,7 @@ def format_constants(c: NetworkConstants) -> str:
     if c.transformers:
         for tr in c.transformers:
             lines.append(
-                f"   • {tr['name']}: A={tr['A']:.3f}, B={tr['B']:.4E}"
+                f"   • {_esc(str(tr['name']))}: A={tr['A']:.3f}, B={tr['B']:.4E}"
             )
     lines += [
         sep,
