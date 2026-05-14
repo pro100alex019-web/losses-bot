@@ -58,32 +58,33 @@ class MonthlyResult:
 
     def format_report(self) -> str:
         """Формирует текстовый отчёт для Telegram."""
-        sep = "─" * 28
+        sep = "─" * 30
+        dW_tr = self.dW_xx + self.dW_load
+
         lines = [
-            f"⚡ *Расчёт потерь за {self.month.capitalize()}*\n",
-            f"📊 Исходные данные:",
-            f"   T = {self.T} ч  |  W_а = {self.W_a:,.0f} кВт·ч\n",
+            f"⚡ Расчёт потерь за {self.month.capitalize()}",
+            f"T = {self.T} ч  |  W_а = {self.W_a:,.0f} кВт·ч",
             sep,
-            "📐 *Составляющие потерь:*",
-            f"   Линии (ВЛ + КЛ):           *{self.dW_lines:>10,.1f} кВт·ч*",
-            f"   Трансформаторы х.х. (пост.): *{self.dW_xx:>10,.1f} кВт·ч*",
-            f"   Трансформаторы нагруз. (пер.): *{self.dW_load:>8,.1f} кВт·ч*",
+            "Формулы (Приказ 326):",
+            f"  ΔW_лин = C × W²а / T  =  {self.dW_lines:,.1f} кВт·ч",
+            f"  ΔW_хх  = A × T        =  {self.dW_xx:,.1f} кВт·ч",
+            f"  ΔW_н   = B × W²а / T  =  {self.dW_load:,.1f} кВт·ч",
+            f"  ΔW_тр  = ΔW_хх + ΔW_н =  {dW_tr:,.1f} кВт·ч",
             sep,
-            f"🔴 *ИТОГО потери: {self.dW_total:,.1f} кВт·ч*",
-            f"📉 *Уровень потерь: {self.pct:.2f}%*\n",
+            f"ΔW = ΔW_лин + ΔW_тр",
+            f"ΔW = {self.dW_lines:,.1f} + {dW_tr:,.1f} = {self.dW_total:,.1f} кВт·ч",
+            sep,
+            f"Уровень потерь: {self.dW_total:,.1f} / {self.W_a:,.0f} × 100 = {self.pct:.2f}%",
         ]
 
-        # Оценка уровня
         if self.pct < 5:
-            lines.append("✅ Уровень потерь в норме (< 5%)")
+            lines.append("✅ Норма (< 5%)")
         elif self.pct < 10:
-            lines.append("⚠️ Повышенные потери (5–10%) — рекомендуется анализ")
+            lines.append("⚠️ Повышенные (5–10%) — рекомендуется анализ")
         else:
-            lines.append("🔴 Высокие потери (> 10%) — требуется проверка сети")
+            lines.append("🔴 Высокие (> 10%) — требуется проверка сети")
 
-        lines.append(
-            "\n_Расчёт по Приказу Минэнерго № 326 от 30.12.2008_"
-        )
+        lines.append("\nРасчёт по Приказу Минэнерго № 326 от 30.12.2008")
         return "\n".join(lines)
 
 
